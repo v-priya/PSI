@@ -26,7 +26,7 @@ static class Start {
       Console.Write ("\nPress any key..."); Console.ReadKey (true);
    }
 
-   // Test type-assignment, graph generation
+   // Test type-assignment, graph generation, XML generation
    static void Test2 () {
       string expr = "(pi + 3.5) + 2 <= 1 <> \"Hello\" + two > true + \"World\"";
       var node = new Parser (new Tokenizer (expr)).Parse ();
@@ -43,6 +43,12 @@ static class Start {
       graph.SaveTo ("c:/etc/test.html");
       var pi = new ProcessStartInfo ("c:/etc/test.html") { UseShellExecute = true };
       Process.Start (pi);
+
+      var xml = new ExprXMLGen ();
+      node.Accept (xml);
+      xml.SaveTo ("c:/etc/test.xml");
+      var pi2 = new ProcessStartInfo ("c:/etc/test.xml") { UseShellExecute = true };
+      Process.Start (pi2);
       Console.Write ("\nPress any key..."); Console.ReadKey (true);
    }
 
