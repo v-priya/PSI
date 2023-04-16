@@ -37,4 +37,9 @@ public class ExprTyper : Visitor<NType> {
          _ => Error
       };
    }
+
+   public override NType Visit (NFnCall func) {
+      foreach (var p in func.Params) p.Accept (this);
+      return func.Type = mSymbols[func.Name.Text];
+   }
 }

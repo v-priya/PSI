@@ -1,5 +1,4 @@
 ﻿namespace PSI;
-
 using System.Xml.Linq;
 
 // An basic XML code generator, implemented using the Visitor pattern
@@ -23,6 +22,14 @@ public class ExprXMLGen : Visitor<XElement> {
       var left = binary.Left.Accept (this); var right = binary.Right.Accept (this);
       mElem = New ("Binary").Set ("Op", binary.Op.Kind).Set ("Type", binary.Type);
       mElem.Add (left); mElem.Add (right);
+      return mElem;
+   }
+
+   public override XElement Visit (NFnCall func) {
+      List<XElement> elems = new ();
+      foreach (var p in func.Params) elems.Add (p.Accept (this));
+      mElem = New ("Function").Set ("Name", func.Name.Text).Set ("Type", func.Type);
+      mElem.Add (elems);
       return mElem;
    }
 

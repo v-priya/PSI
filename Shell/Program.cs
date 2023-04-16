@@ -8,47 +8,29 @@ static class Start {
       Test2 ();      // Test ExprTyper and ExprGrapher
       Test3 ();      // Type checks on various expressions
       Test4 ();      // Tokenizer - printout of invalid token
+      Test5 ();      // Test Functions
    }
 
    // Test ExprEval and ExprILGen
    static void Test1 () {
       string expr = "(3 + 2) * 4 - 17 * -five * (two + 1 + 4 + 5)";
-      var node = new Parser (new Tokenizer (expr)).Parse ();
-
-      Console.WriteLine ("-----------------");
-      Console.WriteLine ($"Expression = {expr}");
+      var node = Parse (expr);
+      PrintHeader (expr);
       Dictionary<string, int> vars = new () { ["five"] = 5, ["two"] = 2 };
-      int value = node.Accept (new ExprEvaluator (vars));
-      Console.WriteLine ($"Value = {value}");
-
-      var il = node.Accept (new ExprILGen ());
-      Console.WriteLine ($"\nIL Code = \n{il}");
+      Eval (node, vars);
+      GenIL (node);
       Console.Write ("\nPress any key..."); Console.ReadKey (true);
    }
 
    // Test type-assignment, graph generation, XML generation
    static void Test2 () {
       string expr = "(pi + 3.5) + 2 <= 1 <> \"Hello\" + two > true + \"World\"";
-      var node = new Parser (new Tokenizer (expr)).Parse ();
-
-      Console.WriteLine ("-----------------");
-      Console.WriteLine ($"Expression = {expr}");
+      var node = Parse (expr);
+      PrintHeader (expr);
       Dictionary<string, NType> types = new () { ["pi"] = NType.Real, ["two"] = NType.Int };
-      NType type = node.Accept (new ExprTyper (types));
-      Console.WriteLine ($"Type = {type}");
-
-      var graph = new ExprGrapher (expr);
-      node.Accept (graph);
-      Directory.CreateDirectory ("c:/etc");
-      graph.SaveTo ("c:/etc/test.html");
-      var pi = new ProcessStartInfo ("c:/etc/test.html") { UseShellExecute = true };
-      Process.Start (pi);
-
-      var xml = new ExprXMLGen ();
-      node.Accept (xml);
-      xml.SaveTo ("c:/etc/test.xml");
-      var pi2 = new ProcessStartInfo ("c:/etc/test.xml") { UseShellExecute = true };
-      Process.Start (pi2);
+      GenType (node, types);
+      GenGraph (expr, node);
+      GenXML (node);
       Console.Write ("\nPress any key..."); Console.ReadKey (true);
    }
 
@@ -119,4 +101,59 @@ static class Start {
         end
       end.
       """;
+
+   static void Test5 () {
+      string expr = "12.0 + pi + sin (3.5) + atan2 (12, 13.5) + length (\"hello\") + random ()";
+      var node = Parse (expr);
+      PrintHeader (expr);
+      Dictionary<string, NType> types = new () { ["pi"] = NType.Real, ["sin"] = NType.Real,
+         ["atan2"] = NType.Real, ["length"] = NType.Int, ["random"] = NType.Int };
+      GenType (node, types);
+      GenGraph (expr, node);
+      GenXML (node);
+      GenIL (node);
+      Console.Write ("\nPress any key..."); Console.ReadKey (true);
+   }
+
+   // Helpers
+   static NExpr Parse (string expr) {
+      return new Parser (new Tokenizer (expr)).Parse ();
+   }
+
+   static void PrintHeader (string expr) {
+      Console.WriteLine ("-----------------");
+      Console.WriteLine ($"Expression = {expr}");
+   }
+
+   static void Eval (NExpr node, Dictionary<string, int> vars) {
+      int value = node.Accept (new ExprEvaluator (vars));
+      Console.WriteLine ($"Value = {value}");
+   }
+
+   static void GenType (NExpr node, Dictionary<string, NType> types) {
+      NType type = node.Accept (new ExprTyper (types));
+      Console.WriteLine ($"Type = {type}");
+   }
+
+   static void GenIL (NExpr node) {
+      var il = node.Accept (new ExprILGen ());
+      Console.WriteLine ($"\nIL Code = \n{il}");
+   }
+
+   static void GenGraph (string expr, NExpr node) {
+      var graph = new ExprGrapher (expr);
+      node.Accept (graph);
+      Directory.CreateDirectory ("c:/etc");
+      graph.SaveTo ("c:/etc/test.html");
+      var pi = new ProcessStartInfo ("c:/etc/test.html") { UseShellExecute = true };
+      Process.Start (pi);
+   }
+
+   static void GenXML (NExpr node) {
+      var xml = new ExprXMLGen ();
+      node.Accept (xml);
+      xml.SaveTo ("c:/etc/test.xml");
+      var pi = new ProcessStartInfo ("c:/etc/test.xml") { UseShellExecute = true };
+      Process.Start (pi);
+   }
 }
