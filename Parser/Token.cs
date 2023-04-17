@@ -1,6 +1,7 @@
 namespace PSI;
 using static Token.E;
 using static System.Console;
+using static System.Math;
 
 // Represents a PSI language Token
 public class Token {
@@ -41,28 +42,24 @@ public class Token {
       if (Kind != ERROR) throw new Exception ("PrintError called on a non-error token");
       string hdr = $"File: {Source.FileName}";
       OutputEncoding = Encoding.Unicode;
+      const int margin = 4;
       Out (hdr);
       Out (new string ('\u2501', hdr.Length));
-      int ln = 0, start = 4, err = Column - 1 + start;
-      for (int i = 3; i > 0; i--) {
-         if ((ln = Line - i) < 0) continue;
-         Out (Source.Lines[ln], ln + 1);
-      }
-      ForegroundColor = ConsoleColor.Yellow;
-      Out (new string (' ', err) + '^');
-      int mid = Text.Length / 2 - (Text.Length % 2 == 0 ? 1 : 0);
-      int left = err - mid;
-      CursorLeft = left > start ? left : start;
-      Out (Text);
-      ResetColor ();
-      for (int i = 0; i < 2; i++) {
-         if ((ln = Line + i) == Source.Lines.Length) break;
-         Out (Source.Lines[ln], ln + 1);
+      int lnstart = Min (Line, Max (Line - 2, 1)), lnend = Max (Line, Min (Line + 2, Source.Lines.Length));
+      int err = Column + margin;
+      for (int i = lnstart; i <= lnend; i++) {
+         Out (Source.Lines[i - 1], i);
+         if (i == Line) {
+            ForegroundColor = ConsoleColor.Yellow;
+            Out (new string (' ', err) + '^');
+            int mid = Text.Length / 2 - (Text.Length % 2 == 0 ? 1 : 0);
+            Out (new string (' ', Max (err - mid, margin)) + Text);
+            ResetColor ();
+         }
       }
 
       void Out (string msg, int line = 0) {
-         OutputEncoding = Encoding.Unicode;
-         if (line > 0) WriteLine ($"{line, 3}\u2502{msg}");
+         if (line > 0) WriteLine ($"{line, margin}\u2502{msg}");
          else WriteLine (msg);
       }
    }
