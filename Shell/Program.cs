@@ -151,8 +151,8 @@ static class Start {
 
    static void GenXML (NExpr node) {
       var xml = new ExprXMLGen ();
-      node.Accept (xml);
-      xml.SaveTo ("c:/etc/test.xml");
+      var elem = node.Accept (xml);
+      File.WriteAllText ("c:/etc/test.xml", elem.ToString ());
       var pi = new ProcessStartInfo ("c:/etc/test.xml") { UseShellExecute = true };
       Process.Start (pi);
    }
