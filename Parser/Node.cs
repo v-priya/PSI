@@ -20,7 +20,12 @@ public record NBlock (NDeclarations Decls, NCompoundStmt Body) : Node {
 }
 
 // The declarations section precedes the body of every block
-public record NDeclarations (NVarDecl[] Vars) : Node {
+public record NDeclarations (NVarDecl[] Vars, NFnDecl[] Funcs) : Node {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
+
+// Declares a function (with a type) or a procedure "function | procedure" IDENT paramlist [":" type]; block ";"
+public record NFnDecl (bool Func, Token Name, NVarDecl[] Vars, NType Type, NBlock Block) : Node {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 
@@ -46,6 +51,36 @@ public record NWriteStmt (bool NewLine, NExpr[] Exprs) : NStmt {
 
 // An assignment statement
 public record NAssignStmt (Token Name, NExpr Expr) : NStmt {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
+
+// A read statement to read data "read" "(" identlist ")"
+public record NReadStmt (Token[] Vars) : NStmt {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
+
+// A call statement IDENT arglist
+public record NCallStmt (Token Name, NExpr[] Args) : NStmt {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
+
+// An If statement "if" expression "then" statement [ "else" statement ]
+public record NIfStmt (NExpr If, NStmt Then, NStmt? Else) : NStmt {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
+
+// A While statement "while" expression "do" statement
+public record NWhileStmt (NExpr Cond, NStmt Body) : NStmt {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
+
+// A repeat statement "repeat" statement { ";" statement } "until" expression
+public record NRepeatStmt (NStmt[] Stmts, NExpr Cond) : NStmt {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
+
+// A For loop statement "for" IDENT ":=" expression ( "to" | "downto" ) expression "do" statement
+public record NForStmt (Token Var, NExpr Start, bool Decrement, NExpr End, NStmt Body) : NStmt {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 #endregion

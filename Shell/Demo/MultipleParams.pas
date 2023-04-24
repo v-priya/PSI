@@ -5,7 +5,7 @@ var
    a,b,c:integer;
 begin 
   Writeln (msg);
-  if (i < j) then write (i) else write(j);
+  if (i < j) then write (i); else write(j);
   read (a,b,c);
 end;
 

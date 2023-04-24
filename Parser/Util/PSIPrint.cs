@@ -20,6 +20,7 @@ public class PSIPrint : Visitor<StringBuilder> {
             NWrite ($"{g.Select (a => a.Name).ToCSV ()} : {g.Key};");
          N--;
       }
+      Visit (d.Funcs);
       return S;
    }
 
@@ -34,14 +35,8 @@ public class PSIPrint : Visitor<StringBuilder> {
       NWrite ($"{a.Name} := "); a.Expr.Accept (this); return Write (";");
    }
 
-   public override StringBuilder Visit (NWriteStmt w) {
-      NWrite (w.NewLine ? "WriteLn (" : "Write (");
-      for (int i = 0; i < w.Exprs.Length; i++) {
-         if (i > 0) Write (", ");
-         w.Exprs[i].Accept (this);
-      }
-      return Write (");");
-   }
+   public override StringBuilder Visit (NWriteStmt w)
+      => VisitN (w.NewLine ? "WriteLn" : "Write", nodes: w.Exprs);
 
    public override StringBuilder Visit (NLiteral t)
       => Write (t.Value.ToString ());
@@ -58,17 +53,69 @@ public class PSIPrint : Visitor<StringBuilder> {
       b.Right.Accept (this); return Write (")");
    }
 
-   public override StringBuilder Visit (NFnCall f) {
-      Write ($"{f.Name} (");
-      for (int i = 0; i < f.Params.Length; i++) {
-         if (i > 0) Write (", "); f.Params[i].Accept (this);
-      }
-      return Write (")");
+   public override StringBuilder Visit (NFnCall f)
+      => VisitN (f.Name.Text, false, f.Params);
+
+   public override StringBuilder Visit (NFnDecl f) {
+      NWrite($"{(f.Func ? "function" : "procedure")} {f.Name.Text} (");
+      Write (string.Join ("; ", f.Vars.GroupBy (a => a.Type)
+         .Select (g => $"{g.Select (a => a.Name.Text).ToCSV ()} : {g.Key}")));
+      Write ($"){(f.Func ? $": {f.Type}" : "")};");
+      f.Block.Accept (this);
+      return Write (";");
+   }
+
+   public override StringBuilder Visit (NReadStmt r)
+      => NWrite ($"read ({r.Vars.ToCSV ()});");
+
+   public override StringBuilder Visit (NCallStmt c)
+      => VisitN (c.Name.Text, nodes: c.Args);
+
+   public override StringBuilder Visit (NIfStmt f) {
+      NWrite ($"if "); f.If.Accept (this);
+      Write (" then "); N++; f.Then.Accept (this); N--;
+      if (f.Else != null) { NWrite ("else "); N++; f.Else.Accept (this); N--; }
+      return S;
+   }
+
+   public override StringBuilder Visit (NWhileStmt w) {
+      NWrite ("while "); w.Cond.Accept (this);
+      Write (" do "); w.Body.Accept (this);
+      return Write (";");
+   }
+
+   public override StringBuilder Visit (NRepeatStmt r) {
+      NWrite ("repeat");
+      N++; Visit (r.Stmts); N--;
+      NWrite ("until "); r.Cond.Accept (this);
+      return Write (";");
+   }
+
+   public override StringBuilder Visit (NForStmt f) {
+      NWrite ($"for {f.Var.Text} := ");
+      f.Start.Accept (this);
+      Write (f.Decrement ? " down to " : " to ");
+      f.End.Accept (this);
+      Write (" do"); N++;
+      f.Body.Accept (this);
+      N--;
+      return S;
    }
 
    StringBuilder Visit (params Node[] nodes) {
       nodes.ForEach (a => a.Accept (this));
       return S;
+   }
+
+   // Helper to visit and write multiple parameters in format --> Name (arg1 [, arg2...argN]);
+   StringBuilder VisitN (string name, bool newline = true, params Node[] nodes) {
+      string s = $"{name} (";
+      if (newline) NWrite (s); else Write (s);
+      for (int i = 0; i < nodes.Length; i++) {
+         if (i > 0) Write (", ");
+         nodes[i].Accept (this);
+      }
+      return Write ($"){(newline ? ";" : "")}");
    }
 
    // Writes in a new line

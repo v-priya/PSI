@@ -2,11 +2,15 @@
 
 static class Start {
    static void Main () {
-      NProgram? node;
       try {
-         var text = File.ReadAllText ("P:/Shell/Demo/Complex.pas");
-         node = new Parser (new Tokenizer (text)).Parse ();
-         node.Accept (new PSIPrint ());
+         string[] files = Directory.GetFiles ("P:/Shell/Demo", "*.pas");
+         foreach (var f in files) {
+            string hdr = $"(* {Path.GetFileName (f)} *)";
+            Console.WriteLine (hdr); Console.WriteLine ($"(* {new string ('-', hdr.Length - 6)} *)");
+            NProgram? node = new Parser (new Tokenizer (f)).Parse ();
+            node.Accept (new PSIPrint ());
+            Console.WriteLine ("\n");
+         }
       } catch (ParseException pe) {
          Console.WriteLine ();
          pe.Print ();

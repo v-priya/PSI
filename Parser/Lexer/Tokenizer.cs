@@ -6,7 +6,11 @@ using static Token.E;
 
 // Converts a stream of text to PSI Tokens
 public class Tokenizer {
-   public Tokenizer (string text) => mText = text + " ";
+   public Tokenizer (string file) {
+      mText = File.ReadAllText (file);
+      mFileName = Path.GetFileName (file);
+   }
+
    readonly string mText;
    int mN, mLine = 1, mLineStart = -1;
 
@@ -15,7 +19,8 @@ public class Tokenizer {
    string[]? mLines;
 
    /// <summary>The source file from which the code has been read in</summary>
-   public string FileName => "untitled.pas";
+   public string FileName => mFileName;
+   readonly string mFileName;
 
    // Returns the next token (returns EOF token if no more are left)
    public Token Next () {
@@ -84,7 +89,7 @@ public class Tokenizer {
    Token PunctuationOrOperator () {
       foreach (var (kind, text) in Token.Match) {
          int n = text.Length;
-         if (mN + n < mText.Length && text == mText[mN..(mN + n)]) {
+         if (mN + n <= mText.Length && text == mText[mN..(mN + n)]) {
             int start = mN; mN += n; 
             return Make (kind, text, start);
          }
