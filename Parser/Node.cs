@@ -38,8 +38,8 @@ public record NVarDecl (Token Name, NType Type) : NParamDecl (Name, Type) {
 
 // Declares a constant
 public record NConstDecl (Token Name, NType Type) : NParamDecl (Name, Type) {
-   public NConstDecl (Token Name, NLiteral Value) : this (Name, Value.Type) { this.Value = Value; }
-   public NLiteral? Value { get; init; }
+   public NConstDecl (Token Name, NExpr Expr) : this (Name, Expr.Type) { this.Expr = Expr; }
+   public NExpr? Expr { get; set; }
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 

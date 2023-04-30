@@ -69,10 +69,7 @@ public class Parser {
       List<NConstDecl> consts = new ();
       while (Match (IDENT)) {
          var name = Prev; Expect (EQ);
-         if (Match (L_INTEGER, L_REAL, L_BOOLEAN, L_CHAR, L_STRING)) {
-            var lit = new NLiteral (Prev);
-            consts.Add (new (name, lit));
-         }
+         consts.Add (new (name, Primary ()));
          Expect (SEMI);
       }
       return consts.ToArray ();
