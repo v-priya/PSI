@@ -36,15 +36,11 @@ public class Parser {
       while (Match (FUNCTION, PROCEDURE)) {
          var (function, rtype) = (Prev.Kind == FUNCTION, NType.Void);
          var name = Expect (IDENT); Expect (OPEN);
-         List<NParamDecl> pars = new ();
-         while (!Peek (CLOSE)) {
-            if (Peek (IDENT)) pars.AddRange (VarDecls ());
-            if (Peek (CONST)) pars.AddRange (FnConstDecls ());
-         }
+         var pars = ParamList ();
          Expect (CLOSE);
          if (function) { Expect (COLON); rtype = Type (); }
          Expect (SEMI);
-         funcs.Add (new NFnDecl (name, pars.ToArray (), rtype, Block ()));
+         funcs.Add (new NFnDecl (name, pars, rtype, Block ()));
       }
       return new (constants, variables, funcs.ToArray ());
    }
@@ -56,14 +52,16 @@ public class Parser {
       return names.ToArray (); 
    }
 
-   NConstDecl[] FnConstDecls () {
-      List<NConstDecl> consts = new ();
-      while (Match (CONST)) {
+   NParamDecl[] ParamList () {
+      List<NParamDecl> pars = new ();
+      while (!Peek (CLOSE)) {
+         var iConst = Peek (CONST); if (iConst) Match (CONST);
          var names = IdentList (); Expect (COLON); var type = Type ();
-         consts.AddRange (names.Select (a => new NConstDecl (a, type)));
+         if (iConst) pars.AddRange (names.Select (a => new NConstDecl (a, type)));
+         else pars.AddRange (names.Select (a => new NVarDecl (a, type)));
          Match (SEMI);
       }
-      return consts.ToArray ();
+      return pars.ToArray ();
    }
 
    // IDENT "=" (L_INTEGER | L_REAL | L_BOOLEAN | L_CHAR | L_STRING) ";" .
