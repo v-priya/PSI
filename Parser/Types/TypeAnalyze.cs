@@ -23,7 +23,13 @@ public class TypeAnalyze : Visitor<NType> {
    }
 
    public override NType Visit (NDeclarations d) {
-      Visit (d.Vars); return Visit (d.Funcs);
+      Visit (d.Consts); Visit (d.Vars); return Visit (d.Funcs);
+   }
+
+   public override NType Visit (NConstDecl c) {
+      c.Value?.Accept (this);
+      mSymbols.Consts.Add (c);
+      return c.Type;
    }
 
    public override NType Visit (NVarDecl d) {
@@ -134,9 +140,11 @@ public class TypeAnalyze : Visitor<NType> {
    }
 
    public override NType Visit (NIdentifier d) {
-      if (mSymbols.Find (d.Name.Text) is NVarDecl v) 
-         return d.Type = v.Type;
-      throw new ParseException (d.Name, "Unknown variable");
+      return mSymbols.Find (d.Name.Text) switch {
+         NVarDecl v => v.Type,
+         NConstDecl c => c.Type,
+         _ => throw new ParseException (d.Name, "Unknown variable")
+      };      
    }
 
    public override NType Visit (NFnCall f) {

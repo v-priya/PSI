@@ -1,6 +1,8 @@
 ﻿// ⓅⓈⒾ  ●  Pascal Language System  ●  Academy'23
 // Node.cs ~ All the syntax tree Nodes
 // ─────────────────────────────────────────────────────────────────────────────
+using System.Runtime.CompilerServices;
+
 namespace PSI;
 
 // Base class for all program nodes
@@ -20,18 +22,29 @@ public record NBlock (NDeclarations Declarations, NCompoundStmt Body) : Node {
 }
 
 // The declarations section precedes the body of every block
-public record NDeclarations (NVarDecl[] Vars, NFnDecl[] Funcs) : Node {
+public record NDeclarations (NConstDecl[] Consts, NVarDecl[] Vars, NFnDecl[] Funcs) : Node {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 
-// Declares a variable (with a type)
-public record NVarDecl (Token Name, NType Type) : Node {
-   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+// Abstract class to declare function parameters
+public abstract record NParamDecl (Token Name, NType Type) : Node {
    public override string ToString () => $"{Type} {Name}";
 }
 
+// Declares a variable (with a type)
+public record NVarDecl (Token Name, NType Type) : NParamDecl (Name, Type) {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
+
+// Declares a constant
+public record NConstDecl (Token Name, NType Type) : NParamDecl (Name, Type) {
+   public NConstDecl (Token Name, NLiteral Value) : this (Name, Value.Type) { this.Value = Value; }
+   public NLiteral? Value { get; init; }
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+}
+
 // Declares a function (or procedure) 
-public record NFnDecl (Token Name, NVarDecl[] Params, NType Return, NBlock? Body) : Node {
+public record NFnDecl (Token Name, NParamDecl[] Params, NType Return, NBlock? Body) : Node {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
    public override string ToString () => $"{Return} {Name} ({Params.ToCSV ()})";
 }

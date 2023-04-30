@@ -14,6 +14,11 @@ public class PSIPrint : Visitor<StringBuilder> {
       => Visit (b.Declarations, b.Body);
 
    public override StringBuilder Visit (NDeclarations d) {
+      if (d.Consts.Length > 0) {
+         NWrite ("const"); N++;
+         foreach (var c in d.Consts) c.Accept (this);
+         N--;
+      }
       if (d.Vars.Length > 0) {
          NWrite ("var"); N++;
          foreach (var g in d.Vars.GroupBy (a => a.Type))
@@ -24,6 +29,9 @@ public class PSIPrint : Visitor<StringBuilder> {
       return S;
    }
 
+   public override StringBuilder Visit (NConstDecl c)
+      => NWrite ($"{c.Name} = {c.Value?.Value.Text};");
+
    public override StringBuilder Visit (NVarDecl d)
       => NWrite ($"{d.Name} : {d.Type}");
 
@@ -31,8 +39,9 @@ public class PSIPrint : Visitor<StringBuilder> {
       NWrite (f.Return == NType.Void ? "procedure " : "function ");
       Write ($"{f.Name.Text} (");
       for (int i = 0; i < f.Params.Length; i++) {
+         var c = f.Params[i] is NConstDecl? "const " : "";
          if (i > 0) Write (", ");
-         Write ($"{f.Params[i].Name.Text}: {f.Params[i].Type}");
+         Write ($"{c}{f.Params[i].Name.Text}: {f.Params[i].Type}");
       }
       Write (")");
       if (f.Return != NType.Void) Write ($": {f.Return}");

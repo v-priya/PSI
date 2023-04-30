@@ -30,17 +30,23 @@ public class Parser {
 
    // declarations = [var-decls] [procfn-decls] .
    NDeclarations Declarations () {
+      var constants = Match (CONST) ? ConstDecls () : new NConstDecl[0];
       var variables = Match (VAR) ? VarDecls () : new NVarDecl[0];
       List<NFnDecl> funcs = new ();
       while (Match (FUNCTION, PROCEDURE)) {
          var (function, rtype) = (Prev.Kind == FUNCTION, NType.Void);
          var name = Expect (IDENT); Expect (OPEN);
-         var pars = VarDecls (); Expect (CLOSE);
+         List<NParamDecl> pars = new ();
+         while (!Peek (CLOSE)) {
+            if (Peek (IDENT)) pars.AddRange (VarDecls ());
+            if (Peek (CONST)) pars.AddRange (FnConstDecls ());
+         }
+         Expect (CLOSE);
          if (function) { Expect (COLON); rtype = Type (); }
          Expect (SEMI);
-         funcs.Add (new NFnDecl (name, pars, rtype, Block ()));
+         funcs.Add (new NFnDecl (name, pars.ToArray (), rtype, Block ()));
       }
-      return new (variables, funcs.ToArray ());
+      return new (constants, variables, funcs.ToArray ());
    }
 
    // ident-list = IDENT { "," IDENT }
@@ -48,6 +54,30 @@ public class Parser {
       List<Token> names = new ();
       do { names.Add (Expect (IDENT)); } while (Match (COMMA));
       return names.ToArray (); 
+   }
+
+   NConstDecl[] FnConstDecls () {
+      List<NConstDecl> consts = new ();
+      while (Match (CONST)) {
+         var names = IdentList (); Expect (COLON); var type = Type ();
+         consts.AddRange (names.Select (a => new NConstDecl (a, type)));
+         Match (SEMI);
+      }
+      return consts.ToArray ();
+   }
+
+   // IDENT "=" (L_INTEGER | L_REAL | L_BOOLEAN | L_CHAR | L_STRING) ";" .
+   NConstDecl[] ConstDecls () {
+      List<NConstDecl> consts = new ();
+      while (Match (IDENT)) {
+         var name = Prev; Expect (EQ);
+         if (Match (L_INTEGER, L_REAL, L_BOOLEAN, L_CHAR, L_STRING)) {
+            var lit = new NLiteral (Prev);
+            consts.Add (new (name, lit));
+         }
+         Expect (SEMI);
+      }
+      return consts.ToArray ();
    }
 
    // var-decl = ident-list ":" type
