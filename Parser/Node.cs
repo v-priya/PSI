@@ -40,6 +40,7 @@ public record NVarDecl (Token Name, NType Type) : NParamDecl (Name, Type) {
 public record NConstDecl (Token Name, NType Type) : NParamDecl (Name, Type) {
    public NConstDecl (Token Name, NExpr Expr) : this (Name, Expr.Type) { this.Expr = Expr; }
    public NExpr? Expr { get; set; }
+   public new NType Type { get; set; } = Type;
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 

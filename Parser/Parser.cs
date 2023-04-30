@@ -64,12 +64,12 @@ public class Parser {
       return pars.ToArray ();
    }
 
-   // IDENT "=" (L_INTEGER | L_REAL | L_BOOLEAN | L_CHAR | L_STRING) ";" .
+   // IDENT "=" expression ";" .
    NConstDecl[] ConstDecls () {
       List<NConstDecl> consts = new ();
       while (Match (IDENT)) {
          var name = Prev; Expect (EQ);
-         consts.Add (new (name, Primary ()));
+         consts.Add (new (name, Expression ()));
          Expect (SEMI);
       }
       return consts.ToArray ();

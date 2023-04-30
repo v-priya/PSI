@@ -29,7 +29,10 @@ public class TypeAnalyze : Visitor<NType> {
    public override NType Visit (NConstDecl c) {
       c.Expr?.Accept (this);
       mSymbols.Consts.Add (c);
-      if (c.Expr != null) c.Expr = AddTypeCast (c.Name, c.Expr, c.Type);
+      if (c.Expr != null) { 
+         c.Expr = AddTypeCast (c.Name, c.Expr, c.Expr.Type);
+         c.Type = c.Expr.Type;
+      }
       return c.Type;
    }
 
