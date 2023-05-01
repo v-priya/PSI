@@ -1,6 +1,6 @@
 ﻿program CTest;
 const
-   pi = 3.14;
+   one = sin (90);
    message = "Hello";
 
 function Test (const c, d : string;) : string;
@@ -8,5 +8,5 @@ begin
    Test := c + " " + d;
 end;
 begin
-   write (message, ". pi = ", pi);
+   write (Test (message, "World!"), ". one = ", one);
 end.

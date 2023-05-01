@@ -2,6 +2,8 @@
 // TypeAnalyze.cs ~ Type checking, type coercion
 // ─────────────────────────────────────────────────────────────────────────────
 namespace PSI;
+
+using System.Xml.Linq;
 using static NType;
 using static Token.E;
 
@@ -27,9 +29,10 @@ public class TypeAnalyze : Visitor<NType> {
    }
 
    public override NType Visit (NConstDecl c) {
-      c.Expr?.Accept (this);
-      mSymbols.Consts.Add (c);
-      if (c.Expr != null) { 
+      if (!Has (c.Name)) mSymbols.Consts.Add (c);
+      else throw new ParseException (c.Name, $"'{c.Name.Text}' already defined.");
+      if (c.Expr != null) {
+         c.Expr.Accept (this);
          c.Expr = AddTypeCast (c.Name, c.Expr, c.Expr.Type);
          c.Type = c.Expr.Type;
       }
@@ -37,12 +40,14 @@ public class TypeAnalyze : Visitor<NType> {
    }
 
    public override NType Visit (NVarDecl d) {
-      mSymbols.Vars.Add (d);
+      if (!Has (d.Name)) mSymbols.Vars.Add (d);
+      else throw new ParseException (d.Name, $"'{d.Name.Text}' already defined.");
       return d.Type;
    }
 
    public override NType Visit (NFnDecl f) {
-      mSymbols.Funcs.Add (f);
+      if (!Has (f)) mSymbols.Funcs.Add (f);
+      Visit (f.Params); f.Body?.Accept (this);
       return f.Return;
    }
    #endregion
@@ -52,11 +57,12 @@ public class TypeAnalyze : Visitor<NType> {
       => Visit (b.Stmts);
 
    public override NType Visit (NAssignStmt a) {
-      if (mSymbols.Find (a.Name.Text) is not NVarDecl v)
+      if (!Has (a.Name, false))
          throw new ParseException (a.Name, "Unknown variable");
+      var t = Check (a.Name);
       a.Expr.Accept (this);
-      a.Expr = AddTypeCast (a.Name, a.Expr, v.Type);
-      return v.Type;
+      a.Expr = AddTypeCast (a.Name, a.Expr, t);
+      return t;
    }
    
    NExpr AddTypeCast (Token token, NExpr source, NType target) {
@@ -65,7 +71,7 @@ public class TypeAnalyze : Visitor<NType> {
          (Int, Real) or (Char, Int) or (Char, String) => true,
          _ => false
       };
-      if (!valid) throw new ParseException (token, "Invalid type");
+      if (!valid) throw new ParseException (token, $"Expected {target}, found {source.Type}");
       return new NTypeCast (source) { Type = target };
    }
 
@@ -83,9 +89,7 @@ public class TypeAnalyze : Visitor<NType> {
       return Void;
    }
 
-   public override NType Visit (NReadStmt r) {
-      throw new NotImplementedException ();
-   }
+   public override NType Visit (NReadStmt r) => Void;
 
    public override NType Visit (NWhileStmt w) {
       w.Condition.Accept (this); w.Body.Accept (this);
@@ -97,9 +101,8 @@ public class TypeAnalyze : Visitor<NType> {
       return Void;
    }
 
-   public override NType Visit (NCallStmt c) {
-      throw new NotImplementedException ();
-   }
+   public override NType Visit (NCallStmt c) 
+      => Check (c.Name, c.Params);
    #endregion
 
    #region Expression --------------------------------------
@@ -143,17 +146,11 @@ public class TypeAnalyze : Visitor<NType> {
       return bin.Type;
    }
 
-   public override NType Visit (NIdentifier d) {
-      return mSymbols.Find (d.Name.Text) switch {
-         NVarDecl v => v.Type,
-         NConstDecl c => c.Type,
-         _ => throw new ParseException (d.Name, "Unknown variable")
-      };      
-   }
+   public override NType Visit (NIdentifier d)
+      => d.Type = Check (d.Name);
 
-   public override NType Visit (NFnCall f) {
-      throw new NotImplementedException ();
-   }
+   public override NType Visit (NFnCall f)
+      => f.Type = Check (f.Name, f.Params);
 
    public override NType Visit (NTypeCast c) {
       c.Expr.Accept (this); return c.Type;
@@ -164,4 +161,45 @@ public class TypeAnalyze : Visitor<NType> {
       foreach (var node in nodes) node.Accept (this);
       return NType.Void;
    }
+
+   #region Helpers -----------------------------------------
+   bool Has (NFnDecl f) {
+      var name = f.Name.Text; var decls = f.Body?.Declarations;
+      if (Has (f.Name)) Err (f.Name);
+      var par = f.Params.FirstOrDefault (a => a.Name.Text.EqualsIC (name));
+      if (par != null) Err (par.Name);
+      var con = decls?.Consts.FirstOrDefault (a => a.Name.Text.EqualsIC (name));
+      if (con != null) Err (con.Name);
+      var var = decls?.Vars.FirstOrDefault (a => a.Name.Text.EqualsIC (name));
+      if (var != null) Err (var.Name);
+      return false;
+
+      void Err (Token t) => throw new ParseException (t, $"'{name}' already defined.");
+   }
+
+   bool Has (Token Name, bool local = true)
+      => mSymbols.Find (Name.Text, local) != null;
+
+   NType Check (Token Name) {
+      return mSymbols.Find (Name.Text) switch {
+         NVarDecl v => v.Type,
+         NConstDecl c => c.Type,
+         NFnCall f => f.Type,
+         NFnDecl f => f.Return,
+         _ => throw new ParseException (Name, "Unknown variable")
+      };
+   }
+   NType Check (Token Name, NExpr[] Params) {
+      if (mSymbols.Find (Name.Text) is not NFnDecl fd) return Unknown;
+      if (fd.Params.Length != Params.Length)
+         throw new ParseException (Name, $"Parameter count mismatch");
+      for (int i = 0; i < fd.Params.Length; i++) {
+         var (p, fp) = (Params[i], fd.Params[i]);
+         p.Accept (this);
+         p = AddTypeCast (Name, p, fp.Type);
+         if (p.Type == fp.Type) continue;
+      }
+      return fd.Return;
+   }
+   #endregion
 }
