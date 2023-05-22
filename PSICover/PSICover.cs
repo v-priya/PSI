@@ -150,6 +150,8 @@ class Analyzer {
    void GenerateOutputs () {
       ulong[] hits = File.ReadAllLines ($"{Dir}/hits.txt").Select (ulong.Parse).ToArray ();
       var files = mBlocks.Select (a => a.File).Distinct ().ToArray ();
+      if (!Directory.Exists ($"{Dir}/HTML")) Directory.CreateDirectory ($"{Dir}/HTML");
+      List<(string File, int Blocks, int Covered, double Percentage)> summary = new ();
       foreach (var file in files) {
          var blocks = mBlocks.Where (a => a.File == file)
                              .OrderBy (a => a.SPosition)
@@ -163,11 +165,22 @@ class Analyzer {
          var code = File.ReadAllLines (file);
          for (int i = 0; i < code.Length; i++)
             code[i] = code[i].Replace ('<', '\u00ab').Replace ('>', '\u00bb');
+         int covered = 0;
          foreach (var block in blocks) {
             bool hit = hits[block.Id] > 0;
-            string tag = $"<span class=\"{(hit ? "hit" : "unhit")}\">";
-            code[block.ELine] = code[block.ELine].Insert (block.ECol, "</span>");
-            code[block.SLine] = code[block.SLine].Insert (block.SCol, tag);
+            string tag = "";
+            if (hit) {
+               tag = $"<div class=\"tooltip\"><span class=\"tooltiptext\">Hit count: {hits[block.Id]}</span>";
+               covered++;
+            }
+            for (int i = block.SLine; i <= block.ELine; i++) {
+               bool start = i == block.SLine, end = i == block.ELine;
+               tag = $"{(start ? tag : "")}<span class=\"{(hit ? "hit" : "unhit")}\">";
+               int sCol = start ? block.SCol : code[i].TakeWhile (a => char.IsWhiteSpace (a)).Count ();
+               int eCol = end ? block.ECol : code[i].Length;
+               code[i] = $"{code[i].Insert (eCol, $"</span>{(end && hit ? "</div>" : "")}")}";
+               code[i] = $"{code[i].Insert (sCol, $"{tag}")}";
+            }
          }
          string htmlfile = $"{Dir}/HTML/{Path.GetFileNameWithoutExtension (file)}.html";
 
@@ -175,6 +188,13 @@ class Analyzer {
             <html><head><style>
             .hit { background-color:aqua; }
             .unhit { background-color:orange; }
+            .tooltip { cursor:arrow; position:relative; display:inline-block; }
+            .tooltip .tooltiptext {
+               top:100%; border: 1px solid yellow; border-radius: 5px;
+               color:black; visibility:hidden; background-color:#ffffca; padding:5px;
+               position:absolute; z-index:1;
+            }
+            .tooltip:hover .tooltiptext { visibility: visible; }
             </style></head>
             <body><pre>
             {{string.Join ("\r\n", code)}}
@@ -182,10 +202,38 @@ class Analyzer {
             """;
          html = html.Replace ("\u00ab", "&lt;").Replace ("\u00bb", "&gt;");
          File.WriteAllText (htmlfile, html);
+         summary.Add ((file.Replace (@"\\", "/"), blocks.Count, covered, Math.Round (100.0 * covered / blocks.Count, 1)));
       }
+      // Create Summary.HTML to output the coverage results in a table
+      List<string> tabledata = new ();
+      foreach (var row in summary.OrderBy (a=> a.Percentage))
+         tabledata.Add ($"<tr><td>{row.File}</td><td>{row.Blocks}</td><td>{row.Covered}</td><td bgcolor=\"{GetColor (row.Percentage)}\">{row.Percentage}%</td></tr>");
+      string table = $$"""
+         <html>
+         <body><pre>
+         <table>
+         <style>
+         table, th, td {
+            border: 1px solid black;
+            border-collapse: collapse;
+            padding: 10px;
+         }
+         </style>
+         <th>File</th>
+         <th>Blocks</th>
+         <th>Covered</th>
+         <th>Coverage</th>
+         {{string.Join ("\r\n", tabledata)}}
+         </table>
+         </pre></body></html>
+         """;
+      File.WriteAllText ($"{Dir}/HTML/Summary.html", table);
+
       int cBlocks = mBlocks.Count, cHit = hits.Count (a => a > 0);
       double percent = Math.Round (100.0 * cHit / cBlocks, 1);
       Console.WriteLine ($"Coverage: {cHit}/{cBlocks}, {percent}%");
+
+      string GetColor (double percent) => percent > 80 ? "springgreen" : (percent > 50 ? "khaki" : "tomato");
    }
 
    // Restore the DLLs and PDBs from the backups
