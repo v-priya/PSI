@@ -165,13 +165,13 @@ class Analyzer {
          var code = File.ReadAllLines (file);
          for (int i = 0; i < code.Length; i++)
             code[i] = code[i].Replace ('<', '\u00ab').Replace ('>', '\u00bb');
-         int covered = 0;
+         int cHits = 0;
          foreach (var block in blocks) {
             bool hit = hits[block.Id] > 0;
             string tag = "";
             if (hit) {
                tag = $"<div class=\"tooltip\"><span class=\"tooltiptext\">Hit count: {hits[block.Id]}</span>";
-               covered++;
+               cHits++;
             }
             for (int i = block.SLine; i <= block.ELine; i++) {
                bool start = i == block.SLine, end = i == block.ELine;
@@ -202,7 +202,7 @@ class Analyzer {
             """;
          html = html.Replace ("\u00ab", "&lt;").Replace ("\u00bb", "&gt;");
          File.WriteAllText (htmlfile, html);
-         summary.Add ((file.Replace (@"\\", "/"), blocks.Count, covered, Math.Round (100.0 * covered / blocks.Count, 1)));
+         summary.Add ((file.Replace (@"\\", "/"), blocks.Count, cHits, Math.Round (100.0 * cHits / blocks.Count, 1)));
       }
       // Create Summary.HTML to output the coverage results in a table
       List<string> tabledata = new ();
